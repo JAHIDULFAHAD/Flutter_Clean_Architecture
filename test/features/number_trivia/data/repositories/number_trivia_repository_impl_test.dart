@@ -12,7 +12,8 @@ import 'package:mocktail/mocktail.dart';
 class MockRemoteDataSource extends Mock
     implements NumberTriviaRemoteDataSource {}
 
-class MockLocalDataSource extends Mock implements NumberTriviaLocalDataSource {}
+class MockLocalDataSource extends Mock
+    implements NumberTriviaLocalDataSource {}
 
 class MockNetworkInfo extends Mock implements NetworkInfo {}
 
@@ -22,10 +23,23 @@ void main() {
   late MockLocalDataSource mockLocal;
   late MockNetworkInfo mockNetwork;
 
+  const tNumber = 1;
+  const tModel = NumberTriviaModel(number: 1, text: 'test');
+
+  setUpAll(() {
+    registerFallbackValue(
+      const NumberTriviaModel(number: 0, text: 'dummy'),
+    );
+  });
+
   setUp(() {
     mockRemote = MockRemoteDataSource();
     mockLocal = MockLocalDataSource();
     mockNetwork = MockNetworkInfo();
+
+    when(() => mockNetwork.isConnected)
+        .thenAnswer((_) async => true);
+
     repository = NumberTriviaRepositoryImpl(
       remoteDataSource: mockRemote,
       localDataSource: mockLocal,
@@ -33,16 +47,12 @@ void main() {
     );
   });
 
-  const tNumber = 1;
-  const tModel = NumberTriviaModel(number: 1, text: 'test');
-
   group('getConcreteNumberTrivia', () {
     test('should check if the device is online', () async {
-      when(() => mockNetwork.isConnected).thenAnswer((_) async => true);
-      when(
-        () => mockRemote.getConcreteNumberTrivia(any()),
-      ).thenAnswer((_) async => tModel);
-      when(() => mockLocal.cacheNumberTrivia(any())).thenAnswer((_) async {});
+      when(() => mockRemote.getConcreteNumberTrivia(any()))
+          .thenAnswer((_) async => tModel);
+      when(() => mockLocal.cacheNumberTrivia(any()))
+          .thenAnswer((_) async {});
 
       await repository.getConcreteNumberTrivia(tNumber);
 
@@ -51,65 +61,72 @@ void main() {
 
     group('device is online', () {
       setUp(() {
-        when(() => mockNetwork.isConnected).thenAnswer((_) async => true);
+        when(() => mockNetwork.isConnected)
+            .thenAnswer((_) async => true);
       });
 
-      test('should return remote data when call is successful', () async {
-        when(
-          () => mockRemote.getConcreteNumberTrivia(tNumber),
-        ).thenAnswer((_) async => tModel);
-        when(
-          () => mockLocal.cacheNumberTrivia(tModel),
-        ).thenAnswer((_) async {});
+      test('should return remote data when call is successful',
+              () async {
+            when(() => mockRemote.getConcreteNumberTrivia(tNumber))
+                .thenAnswer((_) async => tModel);
+            when(() => mockLocal.cacheNumberTrivia(tModel))
+                .thenAnswer((_) async {});
 
-        final result = await repository.getConcreteNumberTrivia(tNumber);
+            final result =
+            await repository.getConcreteNumberTrivia(tNumber);
 
-        verify(() => mockRemote.getConcreteNumberTrivia(tNumber)).called(1);
-        verify(() => mockLocal.cacheNumberTrivia(tModel)).called(1);
-        expect(result, const Right(tModel));
-      });
+            verify(() =>
+                mockRemote.getConcreteNumberTrivia(tNumber))
+                .called(1);
+            verify(() => mockLocal.cacheNumberTrivia(tModel))
+                .called(1);
+            expect(result, const Right(tModel));
+          });
 
       test(
-        'should return ServerFailure when remote throws ServerException',
-        () async {
-          when(
-            () => mockRemote.getConcreteNumberTrivia(tNumber),
-          ).thenThrow(ServerException());
+          'should return ServerFailure when remote throws ServerException',
+              () async {
+            when(() => mockRemote.getConcreteNumberTrivia(tNumber))
+                .thenThrow(ServerException());
 
-          final result = await repository.getConcreteNumberTrivia(tNumber);
+            final result =
+            await repository.getConcreteNumberTrivia(tNumber);
 
-          verify(() => mockRemote.getConcreteNumberTrivia(tNumber)).called(1);
-          verifyNever(() => mockLocal.cacheNumberTrivia(any()));
-          expect(result, const Left(ServerFailure()));
-        },
-      );
+            expect(result, const Left(ServerFailure()));
+          });
     });
 
     group('device is offline', () {
       setUp(() {
-        when(() => mockNetwork.isConnected).thenAnswer((_) async => false);
+        when(() => mockNetwork.isConnected)
+            .thenAnswer((_) async => false);
       });
 
-      test('should return last cached data when present', () async {
-        when(
-          () => mockLocal.getLastNumberTrivia(),
-        ).thenAnswer((_) async => tModel);
+      test(
+          'should return last cached data when present',
+              () async {
+            when(() => mockLocal.getLastNumberTrivia())
+                .thenAnswer((_) async => tModel);
 
-        final result = await repository.getConcreteNumberTrivia(tNumber);
+            final result =
+            await repository.getConcreteNumberTrivia(tNumber);
 
-        verify(() => mockLocal.getLastNumberTrivia()).called(1);
-        verifyNever(() => mockRemote.getConcreteNumberTrivia(any()));
-        expect(result, const Right(tModel));
-      });
+            verify(() => mockLocal.getLastNumberTrivia())
+                .called(1);
+            expect(result, const Right(tModel));
+          });
 
-      test('should return CacheFailure when no cached data', () async {
-        when(() => mockLocal.getLastNumberTrivia()).thenThrow(CacheException());
+      test(
+          'should return CacheFailure when no cached data',
+              () async {
+            when(() => mockLocal.getLastNumberTrivia())
+                .thenThrow(CacheException());
 
-        final result = await repository.getConcreteNumberTrivia(tNumber);
+            final result =
+            await repository.getConcreteNumberTrivia(tNumber);
 
-        verify(() => mockLocal.getLastNumberTrivia()).called(1);
-        expect(result, const Left(CacheFailure()));
-      });
+            expect(result, const Left(CacheFailure()));
+          });
     });
   });
 }

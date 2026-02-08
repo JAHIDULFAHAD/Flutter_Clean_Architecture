@@ -14,3 +14,7 @@ class ServerFailure extends Failure {
 class CacheFailure extends Failure {
   const CacheFailure();
 }
+
+class InvalidInputFailure extends Failure {
+  const InvalidInputFailure();
+}
